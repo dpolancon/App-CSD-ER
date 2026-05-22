@@ -1,0 +1,6 @@
+{
+  "name": "Socio Club",
+  "description": "Aplicación de gestión de socios, cuotas, deudas y notificaciones del club social de fútbol.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

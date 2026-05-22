@@ -1,0 +1,51 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Soccer Ball Outer boundary -->
+    <path
+        android:fillColor="#E5F5EC"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M54,18 A36,36 0 1,1 53.9,18 Z" />
+        
+    <!-- Center pentagon -->
+    <path
+        android:fillColor="#1B8246"
+        android:pathData="M54,44 L64,51 L60,63 L48,63 L44,51 Z" />
+        
+    <!-- pentagon panels extending to borders -->
+    <!-- Top-middle panel -->
+    <path
+        android:fillColor="#1B8246"
+        android:pathData="M54,18 L44,28 L49,40 L59,40 L64,28 Z" />
+        
+    <!-- Top-Right panel -->
+    <path
+        android:fillColor="#1B8246"
+        android:pathData="M81,32 L68,36 L64,28 L72,21 Z" />
+        
+    <!-- Bottom-Right panel -->
+    <path
+        android:fillColor="#1B8246"
+        android:pathData="M87,54 L76,60 L64,51 L72,42 Z" />
+        
+    <!-- Bottom-Left panel -->
+    <path
+        android:fillColor="#1B8246"
+        android:pathData="M54,90 L64,80 L60,68 L48,68 L44,80 Z" />
+        
+    <!-- Lines connecting panels -->
+    <path
+        android:strokeColor="#1B8246"
+        android:strokeWidth="1.5"
+        android:pathData="M44,28 L44,51 M64,28 L64,51 M48,63 L48,68 M60,63 L60,68 M54,44 L54,18" />
+
+    <path
+        android:strokeColor="#1B8246"
+        android:strokeWidth="1.5"
+        android:pathData="M49,40 L44,51 M59,40 L64,51 M64,51 L76,60 M44,51 L32,60 M48,63 L38,72 M60,63 L70,72 L80,72" />
+
+</vector>
