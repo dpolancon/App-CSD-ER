@@ -1,7 +1,15 @@
 package com.example.ui.dues
 
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +46,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.ClubNotification
 import com.example.data.model.MemberCuotaWithDetails
+import com.example.data.service.GeminiService
 import com.example.ui.viewmodel.ClubViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1097,6 +1107,10 @@ fun PaymentSimulatorDialog(
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val isAnalyzing by viewModel.isAnalyzingReceipt.collectAsStateWithLifecycle()
+    val analysisResult by viewModel.receiptAnalysisResult.collectAsStateWithLifecycle()
 
     var paymentMethod by remember { mutableStateOf(0) } // 0: Credit Card, 1: Bank Transfer, 2: Office Receipt
     var cardNum by remember { mutableStateOf("") }
@@ -1105,6 +1119,37 @@ fun PaymentSimulatorDialog(
     var txHash by remember { mutableStateOf("") }
 
     var step by remember { mutableStateOf(0) } // 0: Form, 1: Processing, 2: Success
+
+    val imageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, it))
+                } else {
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+                }
+                viewModel.analyzeReceiptImage(bitmap)
+            } catch (e: Exception) {
+                // handle error
+            }
+        }
+    }
+
+    LaunchedEffect(analysisResult) {
+        analysisResult?.let { res ->
+            if (res.success && res.transactionId.isNotEmpty() && res.isReceiptValid) {
+                txHash = res.transactionId
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.resetReceiptAnalysis()
+        }
+    }
 
     Dialog(
         onDismissRequest = { if (step != 1) onDismiss() },
@@ -1288,18 +1333,205 @@ fun PaymentSimulatorDialog(
                                             fontSize = 11.sp,
                                             color = colors.onBackground.copy(alpha = 0.8f)
                                         )
-                                        OutlinedTextField(
-                                            value = txHash,
-                                            onValueChange = { txHash = it },
-                                            label = { Text("Código de Operación o ID") },
-                                            placeholder = { Text("Ej: TX-90321") },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(top = 4.dp),
-                                            shape = RoundedCornerShape(10.dp)
-                                        )
-                                    }
-                                }
+                                        
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        // --- GEMINI REAL-TIME AI RECEIPT ANALYSIS AREA ---
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = colors.primary.copy(alpha = 0.08f)),
+                                            border = if (isAnalyzing) BorderStroke(1.dp, colors.primary) else null,
+                                            shape = RoundedCornerShape(10.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(10.dp),
+                                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.AutoAwesome,
+                                                        contentDescription = "AI Scanner",
+                                                        tint = colors.primary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Text(
+                                                        text = "Comprobante AI (Gemini 3.5)",
+                                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                        color = colors.primary
+                                                    )
+                                                }
+
+                                                Text(
+                                                    text = "Sube la captura de tu transferencia. Gemini autocompletará y validará los datos de tu pago al instante.",
+                                                    fontSize = 10.sp,
+                                                    color = colors.onSurface.copy(alpha = 0.8f)
+                                                )
+
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Button(
+                                                        onClick = { imageLauncher.launch("image/*") },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        modifier = Modifier.weight(1f),
+                                                        contentPadding = PaddingValues(horizontal = 6.dp),
+                                                        colors = ButtonDefaults.buttonColors(containerColor = colors.primary)
+                                                    ) {
+                                                        Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                        Spacer(modifier = Modifier.width(3.dp))
+                                                        Text("Subir Foto", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                                    }
+
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            val ref = "MP-" + (100000..999999).random().toString()
+                                                            val demoBitmap = GeminiService.generateSimulatedReceipt("Mercado Pago", cuota.amount, ref)
+                                                            viewModel.analyzeReceiptImage(demoBitmap)
+                                                        },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        modifier = Modifier.weight(1f),
+                                                        contentPadding = PaddingValues(horizontal = 2.dp)
+                                                    ) {
+                                                        Text("Demo MP", fontSize = 9.sp)
+                                                    }
+
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            val ref = "BG-" + (100000..999999).random().toString()
+                                                            val mismatchAmount = cuota.amount - 1000.0
+                                                            val demoBitmap = GeminiService.generateSimulatedReceipt("Banco Galicia", mismatchAmount, ref)
+                                                            viewModel.analyzeReceiptImage(demoBitmap)
+                                                        },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        modifier = Modifier.weight(1f),
+                                                        contentPadding = PaddingValues(horizontal = 2.dp)
+                                                    ) {
+                                                        Text("Demo Galicia", fontSize = 9.sp)
+                                                    }
+                                                }
+
+                                                if (isAnalyzing) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(top = 2.dp),
+                                                        horizontalArrangement = Arrangement.Center,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        CircularProgressIndicator(
+                                                            strokeWidth = 2.dp,
+                                                            modifier = Modifier.size(14.dp),
+                                                            color = colors.primary
+                                                        )
+                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Text(
+                                                            text = "Gemini leyendo captura...",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = colors.primary
+                                                        )
+                                                     }
+                                                 }
+
+                                                 analysisResult?.let { res ->
+                                                     Spacer(modifier = Modifier.height(2.dp))
+                                                     HorizontalDivider(color = colors.primary.copy(alpha = 0.15f))
+                                                     
+                                                     if (res.success) {
+                                                         val amountsMatch = Math.abs(res.amount - cuota.amount) < 0.1
+                                                         val isValidPayment = res.isReceiptValid && amountsMatch
+
+                                                         Row(
+                                                             modifier = Modifier
+                                                                 .fillMaxWidth()
+                                                                 .background(
+                                                                     if (isValidPayment) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                                                                     RoundedCornerShape(6.dp)
+                                                                 )
+                                                                 .padding(6.dp),
+                                                             horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                         ) {
+                                                             Icon(
+                                                                 imageVector = if (isValidPayment) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                                                                 contentDescription = "Validación",
+                                                                 tint = if (isValidPayment) Color(0xFF2E7D32) else Color(0xFFC62828),
+                                                                 modifier = Modifier.size(18.dp)
+                                                             )
+
+                                                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                                 Text(
+                                                                     text = if (isValidPayment) "¡Comprobante Válido!" else "Incoherencia Detectada",
+                                                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                                     color = if (isValidPayment) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                                                 )
+                                                                 Text(
+                                                                     text = "• Billetera/Banco: ${res.company}\n" +
+                                                                            "• Ref ID: ${res.transactionId}\n" +
+                                                                            "• Monto en Foto: \$${String.format("%,.0f", res.amount)}\n" +
+                                                                            "• Deuda: \$${String.format("%,.0f", cuota.amount)}",
+                                                                     fontSize = 10.sp,
+                                                                     lineHeight = 11.sp,
+                                                                     color = colors.onSurface
+                                                                 )
+                                                                 
+                                                                 if (!amountsMatch) {
+                                                                     Text(
+                                                                         text = "⚠️ El monto no coincide con la cuota (\$${String.format("%,.0f", cuota.amount)}).",
+                                                                         fontSize = 9.sp,
+                                                                         fontWeight = FontWeight.Bold,
+                                                                         color = Color(0xFFC62828),
+                                                                         modifier = Modifier.padding(top = 1.dp)
+                                                                     )
+                                                                 }
+                                                                 if (res.extraNotes.isNotEmpty()) {
+                                                                     Text(
+                                                                         text = "Obs: ${res.extraNotes}",
+                                                                         fontSize = 9.sp,
+                                                                         color = colors.onSurface.copy(alpha = 0.6f)
+                                                                     )
+                                                                 }
+                                                             }
+                                                         }
+                                                     } else {
+                                                         Row(
+                                                             modifier = Modifier
+                                                                 .fillMaxWidth()
+                                                                 .background(colors.errorContainer, RoundedCornerShape(6.dp))
+                                                                 .padding(6.dp),
+                                                             horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                         ) {
+                                                             Icon(
+                                                                 imageVector = Icons.Filled.ErrorOutline,
+                                                                 contentDescription = "Error",
+                                                                 tint = colors.error,
+                                                                 modifier = Modifier.size(18.dp)
+                                                             )
+                                                             Text(
+                                                                 text = res.extraNotes,
+                                                                 fontSize = 9.sp,
+                                                                 color = colors.onErrorContainer
+                                                             )
+                                                         }
+                                                     }
+                                                 }
+                                             }
+                                         }
+
+                                         OutlinedTextField(
+                                             value = txHash,
+                                             onValueChange = { txHash = it },
+                                             label = { Text("Código de Operación o ID") },
+                                             placeholder = { Text("Ej: TX-90321") },
+                                             modifier = Modifier
+                                                 .fillMaxWidth()
+                                                 .padding(top = 4.dp),
+                                             shape = RoundedCornerShape(10.dp)
+                                         )
+                                     }
+                                 }
                                 2 -> {
                                     Column(
                                         modifier = Modifier

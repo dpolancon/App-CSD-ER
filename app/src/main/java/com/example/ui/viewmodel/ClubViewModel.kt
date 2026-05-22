@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.database.ClubDatabase
 import com.example.data.model.*
 import com.example.data.repository.ClubRepository
+import com.example.data.service.GeminiService
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -347,6 +349,29 @@ class ClubViewModel(
                     )
                 )
             }
+        }
+    }
+
+    // --- GEMINI PROOF-OF-PAYMENT REAL TIME ANALYSIS ---
+    private val _receiptAnalysisResult = MutableStateFlow<GeminiService.ReceiptAnalysis?>(null)
+    val receiptAnalysisResult: StateFlow<GeminiService.ReceiptAnalysis?> = _receiptAnalysisResult.asStateFlow()
+
+    private val _isAnalyzingReceipt = MutableStateFlow(false)
+    val isAnalyzingReceipt: StateFlow<Boolean> = _isAnalyzingReceipt.asStateFlow()
+
+    fun resetReceiptAnalysis() {
+        _receiptAnalysisResult.value = null
+        _isAnalyzingReceipt.value = false
+    }
+
+    fun analyzeReceiptImage(bitmap: Bitmap, onResult: (GeminiService.ReceiptAnalysis) -> Unit = {}) {
+        viewModelScope.launch {
+            _isAnalyzingReceipt.value = true
+            _receiptAnalysisResult.value = null
+            val result = GeminiService.analyzeReceipt(bitmap)
+            _receiptAnalysisResult.value = result
+            _isAnalyzingReceipt.value = false
+            onResult(result)
         }
     }
 
