@@ -15,6 +15,8 @@ class ClubRepository(private val clubDao: ClubDao) {
 
     fun getAllMembersFlow(): Flow<List<Member>> = clubDao.getAllMembersFlow()
 
+    suspend fun getMembersCount(): Int = clubDao.getMembersCount()
+
     suspend fun updateMemberPassword(id: Long, passwordHash: String) = clubDao.updateMemberPassword(id, passwordHash)
 
     suspend fun updateMemberName(id: Long, name: String) = clubDao.updateMemberName(id, name)

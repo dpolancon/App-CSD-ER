@@ -1,0 +1,5 @@
+ID Socio,RUT,Nombre Completo,Email Acceso,Total Pagado ($),Saldo Deudor ($),Estado Financiero
+SOC-2026-0010,11.222.333-K,Diego Armando Silva,socio@club.com,4500,12000,Con Deuda
+SOC-2026-0030,22.333.444-9,Lionel Andrés Paz,leo@club.com,0,16500,Con Deuda
+SOC-2026-1025,33.444.555-8,Juan Pérez,juan.perez@example.com,0,4500,Con Deuda
+SOC-2026-1026,44.555.666-7,María Gómez,maria.gomez@example.com,6000,0,Al Día

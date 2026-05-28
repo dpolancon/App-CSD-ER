@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,11 +58,10 @@ fun MemberDashboardScreen(
     onLogout: () -> Unit
 ) {
     val user by viewModel.currentUser.collectAsStateWithLifecycle()
-    val notifications by viewModel.currentNotifications.collectAsStateWithLifecycle(initialValue = emptyList())
     val dues by viewModel.currentDues.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val colors = MaterialTheme.colorScheme
-    var currentTab by remember { mutableStateOf(0) } // 0: Account/Carnet, 1: Dues/Debts, 2: Notifications
+    var currentTab by remember { mutableStateOf(0) } // 0: Resumen, 1: Saldos
 
     // State for Payment dialog
     var selectedCuotaForPayment by remember { mutableStateOf<MemberCuotaWithDetails?>(null) }
@@ -107,7 +106,7 @@ fun MemberDashboardScreen(
                         modifier = Modifier.testTag("logout_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Logout,
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
                             contentDescription = "Cerrar sesión",
                             tint = colors.error
                         )
@@ -128,49 +127,16 @@ fun MemberDashboardScreen(
                 NavigationBarItem(
                     selected = currentTab == 0,
                     onClick = { currentTab = 0 },
-                    icon = { Icon(Icons.Filled.Badge, contentDescription = "Carnet") },
-                    label = { Text("Carnet") },
-                    modifier = Modifier.testTag("tab_carnet")
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Resumen") },
+                    label = { Text("Resumen") },
+                    modifier = Modifier.testTag("tab_resumen")
                 )
                 NavigationBarItem(
                     selected = currentTab == 1,
                     onClick = { currentTab = 1 },
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                val pendingCount = dues.count { it.status == "PENDING" }
-                                if (pendingCount > 0) {
-                                    Badge(containerColor = colors.error) {
-                                        Text(pendingCount.toString())
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(Icons.Filled.AccountBalanceWallet, contentDescription = "Deudas")
-                        }
-                    },
-                    label = { Text("Mis Deudas") },
-                    modifier = Modifier.testTag("tab_deudas")
-                )
-                NavigationBarItem(
-                    selected = currentTab == 2,
-                    onClick = { currentTab = 2 },
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                val unreadCount = notifications.count { !it.isRead }
-                                if (unreadCount > 0) {
-                                    Badge(containerColor = colors.primary) {
-                                        Text(unreadCount.toString())
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(Icons.Filled.Notifications, contentDescription = "Notificaciones")
-                        }
-                    },
-                    label = { Text("Avisos") },
-                    modifier = Modifier.testTag("tab_notificaciones")
+                    icon = { Icon(Icons.Filled.Assessment, contentDescription = "Saldos") },
+                    label = { Text("Saldos") },
+                    modifier = Modifier.testTag("tab_saldos")
                 )
             }
         }
@@ -186,22 +152,19 @@ fun MemberDashboardScreen(
             label = "TabContent"
         ) { targetTab ->
             when (targetTab) {
-                0 -> MemberAccountTab(
+                0 -> MemberResumenTab(
                     viewModel = viewModel,
                     dues = dues,
-                    onNavigateToPayTab = { currentTab = 1 }
+                    onNavigateToSaldos = { currentTab = 1 }
                 )
-                1 -> MemberDuesTab(
+                1 -> MemberSaldosTab(
                     viewModel = viewModel,
                     dues = dues,
                     onPayCuota = { selectedCuotaForPayment = it }
                 )
-                2 -> MemberNotificationsTab(
-                    viewModel = viewModel,
-                    notifications = notifications
-                )
             }
         }
+    }
 
         // Expanded Payment Sheet Dialog flow
         selectedCuotaForPayment?.let { cuota ->
@@ -212,13 +175,12 @@ fun MemberDashboardScreen(
             )
         }
     }
-}
 
 @Composable
-fun MemberAccountTab(
+fun MemberResumenTab(
     viewModel: ClubViewModel,
     dues: List<MemberCuotaWithDetails>,
-    onNavigateToPayTab: () -> Unit
+    onNavigateToSaldos: () -> Unit
 ) {
     val user by viewModel.currentUser.collectAsStateWithLifecycle()
     val colors = MaterialTheme.colorScheme
@@ -232,170 +194,32 @@ fun MemberAccountTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Core Member Plastic-Card visual implementation
+        // Welcoming header banner
         item {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Card(
+                colors = CardDefaults.cardColors(containerColor = colors.primaryContainer.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "CREDANCIAL DIGITAL DE SOCIO",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
-                        color = colors.primary
-                    ),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                // High fidelity physical card simulator
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.618f) // Golden ratio for cards
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(colors.primary, colors.secondary),
-                                start = Offset(0f, 0f),
-                                end = Offset(1000f, 1000f)
-                            )
-                        )
-                        .border(1.5.dp, colors.primaryContainer.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    // Decorative Canvas Stadium Lines
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val width = size.width
-                        val height = size.height
-
-                        // Stadium semi-circle lines
-                        drawCircle(
-                            color = Color.White.copy(alpha = 0.08f),
-                            radius = height / 2.0f,
-                            center = Offset(width, height / 2.0f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-                        )
-                        drawCircle(
-                            color = Color.White.copy(alpha = 0.05f),
-                            radius = height / 1.3f,
-                            center = Offset(0f, height / 2.0f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-                        )
-                    }
-
-                    // Card Content
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Card Header
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Filled.SportsSoccer,
-                                    contentDescription = null,
-                                    tint = colors.onPrimary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "COMPLEJO FUTBOL",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Black,
-                                        letterSpacing = 1.sp,
-                                        color = colors.onPrimary
-                                    )
-                                )
-                            }
-                            // Active status pill
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.tertiary.copy(alpha = 0.2f))
-                                    .border(1.dp, colors.tertiary, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "ACTIVO",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.tertiary
-                                    )
-                                )
-                            }
-                        }
-
-                        // Name and ID Number
-                        Column {
-                            Text(
-                                text = user?.name?.uppercase() ?: "SOCIO GENERAL",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.onPrimary,
-                                    letterSpacing = 0.5.sp
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = user?.memberNumber ?: "SOC-2026-XXXX",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.onPrimary.copy(alpha = 0.82f)
-                                )
-                            )
-                        }
-
-                        // Card Footer - simulated barcode
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Column {
-                                Text(
-                                    text = "MEMBRESÍA",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colors.onPrimary.copy(alpha = 0.6f)
-                                )
-                                Text(
-                                    text = "SOCIO CLUB SOCIAL",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.onPrimary
-                                    )
-                                )
-                            }
-
-                            // Simulated physical barcode visual
-                            Row(
-                                modifier = Modifier
-                                    .height(24.dp)
-                                    .background(Color.White.copy(alpha = 0.15f))
-                                    .padding(horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(1.5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val barWidths = listOf(2, 4, 1, 3, 2, 4, 1, 2, 3, 1, 4, 2)
-                                barWidths.forEach { width ->
-                                    Box(
-                                        modifier = Modifier
-                                            .width(width.dp)
-                                            .fillMaxHeight()
-                                            .background(colors.onPrimary)
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    Text(
+                        text = "Bienvenido al Club Estrella Roja ⚽",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colors.primary
+                    )
+                    Text(
+                        text = user?.name ?: "Socio",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
+                        color = colors.onBackground
+                    )
+                    Text(
+                        text = "Nro. Afiliado: ${user?.memberNumber ?: "SOC-2026"}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                        color = colors.onBackground.copy(alpha = 0.7f)
+                    )
                 }
             }
         }
@@ -413,7 +237,7 @@ fun MemberAccountTab(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Balance Financiero en el Club",
+                        text = "Estado Financiero Corto",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = colors.onSurface
                     )
@@ -425,7 +249,7 @@ fun MemberAccountTab(
                     ) {
                         Column {
                             Text(
-                                text = "Deuda Acumulada",
+                                text = "Saldo Deudor Pendiente",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurface.copy(alpha = 0.6f)
                             )
@@ -440,11 +264,11 @@ fun MemberAccountTab(
 
                         if (totalPendingAmount > 0.0) {
                             Button(
-                                onClick = onNavigateToPayTab,
+                                onClick = onNavigateToSaldos,
                                 colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Text("Pagar Deuda")
+                                Text("Ver Saldos")
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
@@ -560,7 +384,7 @@ fun MemberAccountTab(
                     }
 
                     ListItem(
-                        headlineContent = { Text("Correo Universitario / Usuario (Fijo)") },
+                        headlineContent = { Text("Correo / Usuario (Fijo)") },
                         supportingContent = { Text(user?.email ?: "") },
                         leadingContent = { Icon(Icons.Filled.Email, contentDescription = null, tint = colors.primary) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
@@ -570,32 +394,6 @@ fun MemberAccountTab(
                         supportingContent = { Text(user?.phone ?: "") },
                         leadingContent = { Icon(Icons.Filled.Phone, contentDescription = null, tint = colors.primary) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    )
-                }
-            }
-        }
-
-        // Info Banner
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = colors.primaryContainer.copy(alpha = 0.4f)),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = colors.primary
-                    )
-                    Text(
-                        text = "Recibirás recordatorios automáticos de pago cuando se acerque la fecha de vencimiento de tus cuotas activas asignadas por el club.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onPrimaryContainer
                     )
                 }
             }
@@ -704,398 +502,7 @@ fun MemberAccountTab(
     }
 }
 
-@Composable
-fun MemberDuesTab(
-    viewModel: ClubViewModel,
-    dues: List<MemberCuotaWithDetails>,
-    onPayCuota: (MemberCuotaWithDetails) -> Unit
-) {
-    val colors = MaterialTheme.colorScheme
-    var filterPendingOnly by remember { mutableStateOf(false) }
 
-    val displayedDues = if (filterPendingOnly) {
-        dues.filter { it.status == "PENDING" }
-    } else {
-        dues
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-    ) {
-        // Tab header with filter switch
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "Control de Cuota Obligatoria",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Text(
-                    text = "${displayedDues.size} cuotas listadas",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onBackground.copy(alpha = 0.6f)
-                )
-            }
-
-            // Simple Filter Pill
-            FilterChip(
-                selected = filterPendingOnly,
-                onClick = { filterPendingOnly = !filterPendingOnly },
-                label = { Text("Pendientes", fontSize = 12.sp) },
-                leadingIcon = {
-                    if (filterPendingOnly) {
-                        Icon(Icons.Filled.FilterList, contentDescription = null, modifier = Modifier.size(14.dp))
-                    }
-                },
-                modifier = Modifier.testTag("filter_pending_chip")
-            )
-        }
-
-        if (displayedDues.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Savings,
-                        contentDescription = "No dues icon",
-                        tint = colors.primary.copy(alpha = 0.3f),
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Text(
-                        text = "¡Felicitaciones! No hay cuotas pendientes que coincidan.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onBackground.copy(alpha = 0.5f),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .testTag("dues_list"),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(displayedDues, key = { it.memberCuotaId }) { item ->
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (item.status == "PENDING") colors.surface else colors.surfaceVariant.copy(alpha = 0.3f)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = if (item.status == "PENDING") 2.dp else 0.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("due_item_${item.memberCuotaId}")
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Category Badge + Status Row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Category Pill
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(colors.primaryContainer)
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    val catLabel = when (item.category) {
-                                        "MEMBERSHIP" -> "Social"
-                                        "EQUIPMENT" -> "Camisetas"
-                                        "TOURNAMENT" -> "Torneo"
-                                        else -> "Club"
-                                    }
-                                    Text(
-                                        text = catLabel,
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = colors.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    )
-                                }
-
-                                // Status Badge
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            if (item.status == "PENDING") colors.errorContainer else colors.primaryContainer.copy(alpha = 0.4f)
-                                        )
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = if (item.status == "PENDING") "PENDIENTE" else "AL DÍA",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = if (item.status == "PENDING") colors.error else colors.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    )
-                                }
-                            }
-
-                            // Title & Description
-                            Text(
-                                text = item.title,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = colors.onBackground
-                            )
-
-                            if (item.description.isNotBlank()) {
-                                Text(
-                                    text = item.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.onBackground.copy(alpha = 0.65f),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 4.dp),
-                                color = colors.onBackground.copy(alpha = 0.08f)
-                            )
-
-                            // Amount & DueDate / Action
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Importe",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = colors.onBackground.copy(alpha = 0.5f)
-                                    )
-                                    Text(
-                                        text = "$${String.format("%,.2f", item.amount)}",
-                                        style = MaterialTheme.typography.titleLarge.copy(
-                                            fontWeight = FontWeight.Black,
-                                            color = if (item.status == "PENDING") colors.error else colors.primary
-                                        )
-                                    )
-                                }
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    if (item.status == "PENDING") {
-                                        Text(
-                                            text = "Vence: ${viewModel.getFormattedDate(item.dueDate)}",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.onBackground.copy(alpha = 0.7f)
-                                            ),
-                                            modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-
-                                        Button(
-                                            onClick = { onPayCuota(item) },
-                                            colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                            modifier = Modifier.testTag("pay_button_${item.memberCuotaId}")
-                                        ) {
-                                            Icon(Icons.Filled.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Pagar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    } else {
-                                        Text(
-                                            text = "Pagado: ${item.paidDate?.let { viewModel.getFormattedDate(it) } ?: ""}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = colors.primary
-                                        )
-                                        Text(
-                                            text = "Ref: ${item.paymentReference ?: ""}",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 10.sp
-                                            ),
-                                            color = colors.onBackground.copy(alpha = 0.5f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MemberNotificationsTab(
-    viewModel: ClubViewModel,
-    notifications: List<ClubNotification>
-) {
-    val colors = MaterialTheme.colorScheme
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-    ) {
-        Column(modifier = Modifier.padding(vertical = 12.dp)) {
-            Text(
-                text = "Buzón de Comunicaciones",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-            Text(
-                text = "Consulta avisos de pagos, cambios de horarios o avisos generales.",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onBackground.copy(alpha = 0.6f)
-            )
-        }
-
-        if (notifications.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.NotificationsNone,
-                        contentDescription = "Empty notifications",
-                        tint = colors.primary.copy(alpha = 0.3f),
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Text(
-                        text = "No has recibido notificaciones recientes.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onBackground.copy(alpha = 0.5f)
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .testTag("notifications_list"),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(notifications, key = { it.id }) { alert ->
-                    val isGeneral = alert.memberId == null
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (alert.isRead) colors.surfaceVariant.copy(alpha = 0.3f) else colors.surface
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        border = if (!alert.isRead) androidx.compose.foundation.BorderStroke(1.dp, colors.primary.copy(alpha = 0.3f)) else null,
-                        elevation = CardDefaults.cardElevation(defaultElevation = if (alert.isRead) 0.dp else 1.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (!alert.isRead) {
-                                    viewModel.markNotificationAsRead(alert.id)
-                                }
-                            }
-                            .testTag("notification_item_${alert.id}")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            // Circular Category Icon
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isGeneral) colors.primaryContainer else colors.secondaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (isGeneral) Icons.Filled.Campaign else Icons.Filled.AccountBalanceWallet,
-                                    contentDescription = null,
-                                    tint = if (isGeneral) colors.primary else colors.secondary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = alert.title,
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = if (alert.isRead) colors.onBackground.copy(alpha = 0.8f) else colors.onBackground
-                                    )
-
-                                    // Tiny glowing indicator dot if unread
-                                    if (!alert.isRead) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(colors.primary)
-                                        )
-                                    }
-                                }
-
-                                Text(
-                                    text = alert.body,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.onBackground.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = if (isGeneral) "📢 Aviso General" else "👤 Privado",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = colors.onBackground.copy(alpha = 0.4f)
-                                    )
-                                    Text(
-                                        text = viewModel.getFormattedDate(alert.timestamp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = colors.onBackground.copy(alpha = 0.4f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 // Dialog simulating a secure connection to a banking core / card provider
 @OptIn(ExperimentalMaterial3Api::class)
