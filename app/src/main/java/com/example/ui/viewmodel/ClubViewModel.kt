@@ -58,22 +58,9 @@ class ClubViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        // Asynchronously check and seed database from CSV if empty
+        // Run database standard populator
         viewModelScope.launch {
-            val count = repository.getMembersCount()
-            if (count == 0) {
-                com.example.data.database.DatabaseSeeder.seedFromCsv(application, repository)
-                // Always seed the default admin user so that the administration panel remains accessible
-                val demoAdmin = Member(
-                    name = "Presidente del Club",
-                    email = "admin@club.com",
-                    phone = "+54 9 11 4444-8888",
-                    memberNumber = "ADM-2026-0001",
-                    passwordHash = "123",
-                    role = "ADMIN"
-                )
-                repository.insertMember(demoAdmin)
-            }
+            checkAndPopulateDefaults()
         }
     }
 
