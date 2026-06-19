@@ -20,9 +20,6 @@ interface ClubDao {
     @Query("SELECT * FROM members ORDER BY name ASC")
     fun getAllMembersFlow(): Flow<List<Member>>
 
-    @Query("SELECT COUNT(*) FROM members")
-    suspend fun getMembersCount(): Int
-
     @Query("UPDATE members SET passwordHash = :passwordHash WHERE id = :id")
     suspend fun updateMemberPassword(id: Long, passwordHash: String)
 
